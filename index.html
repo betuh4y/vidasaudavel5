@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+  <head>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      header {
+        width: 100%;
+        padding: 20px 0;
+        text-align: center;
+        background-color: #f0f0f0;
+        /* Opcional: cor de fundo do cabeçalho */
+      }
+
+      header img {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+    <script type="text/javascript" src="./index.js" defer=""></script>
+    <link rel="stylesheet" href="./index.css">
+  </head>
+
+  <body>
+
+    <header>
+      <a href="https://ibb.co/7dV11YHH">
+        <img src="https://i.ibb.co/xtG77Cyy/Whats-App-Image-2025-06-22-at-18-08-09.jpg" alt="Whats-App-Image-2025-06-22-at-18-08-09" border="0">
+      </a>
+    </header>
+
+
+
+    <meta charset="UTF-8">
+    <title>Sistema de Vendas (PDV) - VIDA SAUDAVEL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.js"></script>
+    <script type="text/javascript" src="./index.js" defer=""></script>
+    <link rel="stylesheet" href="./index.css">
+    <script type="text/javascript" src="./index.js" defer=""></script>
+    <link rel="stylesheet" href="./index.css">
+
+
+
+    <h2>Sistema de Vendas (PDV) - VIDA SAUDAVEL</h2>
+    <div id="authSection">
+      <h3>Login / Cadastro</h3>
+      <input type="email" id="email" placeholder="Email"><br>
+      <input type="password" id="password" placeholder="Senha"><br>
+      <button id="registerBtn">Cadastrar</button>
+      <button id="loginBtn">Entrar</button>
+    </div>
+
+    <div id="saleSection" style="display:none;">
+      <button id="logoutBtn" style="float:right;">Sair</button>
+
+      <hr>
+      <h3>Nova Venda (PDV)</h3>
+      <div>
+        <label for="barcodeInput">Ler Código de Barras:</label>
+        <input type="text" id="barcodeInput" placeholder="Código de Barras do Produto" autofocus="">
+        <p>Pressione **Enter** após ler o código.</p>
+
+        <h4>Itens na Venda:</h4>
+        <div id="activeSaleItems">
+          <p>Nenhum item adicionado ainda.</p>
+        </div>
+        <div id="currentSaleTotal">
+          Total: R$ 0,00
+        </div>
+
+        <div id="saleActions">
+          <button id="finalizarVendaBtn">Finalizar Venda</button>
+          <button id="cancelSaleBtn">Cancelar Venda</button>
+        </div>
+      </div>
+
+      <div id="paymentModal" class="modal">
+        <div class="modal-content">
+          <span class="close-button">×</span>
+          <h3>Finalizar Venda</h3>
+          <p><strong>Total a Pagar:</strong> <span id="modalTotalValue">R$ 0,00</span></p>
+
+          <label for="modalPaymentType">Forma de Pagamento:</label>
+          <select id="modalPaymentType">
+            <option value="Pix">Pix</option>
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Credito">Crédito</option>
+            <option value="Debito">Débito</option>
+            <option value="Outro">Outro</option>
+          </select><br>
+
+          <div id="amountGivenContainer" style="display:none;">
+            <label for="amountGiven">Valor Recebido (Dinheiro):</label>
+            <input type="number" id="amountGiven" placeholder="Valor que o cliente entregou" step="0.01">
+            <p>Troco: <span id="changeDue">R$ 0,00</span></p>
+          </div>
+
+          <button id="confirmPaymentBtn">Confirmar Pagamento e Imprimir</button>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Cadastrar/Atualizar Produto</h3>
+      <div>
+        <input type="text" id="newProductBarcode" placeholder="Código de Barras do Produto">
+        <input type="text" id="newProductName" placeholder="Nome do Produto">
+        <input type="number" id="newProductPrice" placeholder="Preço (R$)" step="0.01">
+        <select id="newProductUnit">
+          <option value="unidade">Unidade</option>
+          <option value="kilo">Kilo</option>
+        </select>
+        <button id="addProductBtn">Salvar Produto</button>
+        <small>Use esta seção para adicionar ou atualizar produtos que serão reconhecidos pelo leitor de código de barras.</small>
+      </div>
+
+      <hr>
+      <h3>Gerenciar Produtos</h3>
+      <div>
+        <button id="toggleProductListBtn">Mostrar Produtos</button>
+        <div id="productList" style="display:none;">
+          <p>Nenhum produto cadastrado.</p>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Registrar Venda Manual (Alternativa)</h3>
+      <label for="dataVenda">Data e Hora da Venda:</label>
+      <input type="datetime-local" id="dataVenda" required=""><br>
+      <input type="number" id="valorTotal" placeholder="Valor Total da Venda (R$)" step="0.01" required=""><br>
+      <label for="tipoPagamento">Tipo de Pagamento:</label>
+      <select id="tipoPagamento">
+        <option value="Pix">Pix</option>
+        <option value="Dinheiro">Dinheiro</option>
+        <option value="Credito">Crédito</option>
+        <option value="Debito">Débito</option>
+        <option value="Outro">Outro</option>
+      </select><br>
+      <textarea id="observacoes" placeholder="Observações (opcional)"></textarea><br>
+      <button id="submitSale">Salvar Venda</button>
+
+      <hr>
+      <h3>Visualizar e Filtrar Vendas</h3>
+      <div class="filters">
+        <label for="filterDateStart">De:</label>
+        <input type="date" id="filterDateStart">
+        <label for="filterDateEnd">Até:</label>
+        <input type="date" id="filterDateEnd"><br>
+        <label for="filterPaymentType">Tipo de Pagamento:</label>
+        <select id="filterPaymentType">
+          <option value="Todos">Todos</option>
+          <option value="Pix">Pix</option>
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Credito">Crédito</option>
+          <option value="Debito">Débito</option>
+          <option value="Outro">Outro</option>
+        </select>
+        <button id="applyFiltersBtn">Aplicar Filtros</button>
+      </div>
+
+      <div class="period-totals">
+        <div>
+          <strong>Vendas do Dia:</strong>
+          <span id="totalDaySales">R$ 0,00</span>
+        </div>
+        <div>
+          <strong>Vendas da Semana:</strong>
+          <span id="totalWeekSales">R$ 0,00</span>
+        </div>
+        <div>
+          <strong>Vendas do Mês:</strong>
+          <span id="totalMonthSales">R$ 0,00</span>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Exportar Vendas</h3>
+      <div class="download-buttons">
+        <button id="exportPdfBtn">Baixar PDF (Filtradas)</button>
+        <button id="exportExcelBtn">Baixar Excel (Filtradas)</button>
+      </div>
+
+      <hr>
+      <h3>Enviar Relatório por Número</h3>
+      <div class="report-section">
+        <input type="text" id="phoneNumber" placeholder="Número de Telefone (Ex: 55 DDD NÚMERO)" title="Formato: Código do país + DDD + Número. Ex: 5511987654321">
+        <button id="sendReportBtn">Enviar Relatório (Filtradas)</button>
+        <small>Para WhatsApp, use o formato completo com código do país (ex: 55 para Brasil).</small>
+      </div>
+
+      <hr>
+      <h3>Suas Vendas</h3>
+      <div class="total-sales">
+        Total Geral de Vendas (Visível): <span id="totalSalesValue">R$ 0,00</span>
+      </div>
+      <div id="saleList"></div>
+    </div>
+
+    <script type="module">
+      import {
+        initializeApp
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getAuth,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        onAuthStateChanged,
+        signOut
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+      import {
+        getDatabase,
+        ref,
+        push,
+        set,
+        update,
+        onValue,
+        remove
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDJBdK9I-jtg9ujTc9Xsxr-hnPfkId4wIU",
+        authDomain: "pdv1-77632.firebaseapp.com",
+        databaseURL: "https://pdv1-77632-default-rtdb.firebaseio.com",
+        projectId: "pdv1-77632",
+        storageBucket: "pdv1-77632.firebasestorage.app",
+        messagingSenderId: "246033791117",
+        appId: "1:246033791117:web:7b70b511ea8d8c5ba1cac4",
+        measurementId: "G-NTG13SG6VM"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth();
+      const db = getDatabase();
+
+      let editId = null;
+      let allSalesData = [];
+      let filteredSalesData = [];
+      let activeSaleItems = [];
+      let productsDatabase = {};
+
+      // --- Funções de Autenticação ---
+      document.getElementById("registerBtn").onclick = () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        createUserWithEmailAndPassword(auth, email, password)
+          .then(() => alert("Usuário registrado!"))
+          .catch(err => alert(err.message));
+      };
+
+      document.getElementById("loginBtn").onclick = () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        signInWithEmailAndPassword(auth, email, password)
+          .then(() => {
+            alert("Login realizado!");
+            loadProductsFromDatabase();
+          })
+          .catch(err => alert(err.message));
+      };
+
+      document.getElementById("logoutBtn").onclick = () => {
+        signOut(auth);
+      };
+
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          document.getElementById("authSection").style.display = "none";
+          document.getElementById("saleSection").style.display = "block";
+          loadAllSalesAndFilter(user.uid);
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          document.getElementById("dataVenda").value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+          const today = new Date();
+          const todayFormatted = today.toISOString().split('T')[0];
+          document.getElementById("filterDateStart").value = todayFormatted;
+          document.getElementById("filterDateEnd").value = todayFormatted;
+
+          cancelActiveSale();
+          loadProductsFromDatabase();
+        } else {
+          document.getElementById("authSection").style.display = "block";
+          document.getElementById("saleSection").style.display = "none";
+        }
+      });
+
+      // --- Função para carregar produtos do Firebase ---
+      function loadProductsFromDatabase() {
+        const user = auth.currentUser;
+        if (user) {
+          const produtosRef = ref(db, `produtos/${user.uid}`);
+          onValue(produtosRef, snapshot => {
+            productsDatabase = {};
+            if (snapshot.exists()) {
+              productsDatabase = snapshot.val();
+            }
+            displayProducts();
+          }, {
+            onlyOnce: false
+          });
+        }
+      }
+
+      // --- Função para adicionar/atualizar produtos ---
+      document.getElementById("addProductBtn").onclick = () => {
+        const barcode = document.getElementById("newProductBarcode").value.trim();
+        const name = document.getElementById("newProductName").value.trim();
+        const price = parseFloat(document.getElementById("newProductPrice").value);
+        const unit = document.getElementById("newProductUnit").value;
+
+        if (!barcode || !name || isNaN(price) || price <= 0) {
+          alert("Por favor, preencha todos os campos do produto corretamente.");
+          return;
+        }
+
+        const user = auth.currentUser;
+        if (user) {
+          const productRef = ref(db, `produtos/${user.uid}/${barcode}`);
+          onValue(productRef, snapshot => {
+            if (snapshot.exists() && !confirm(`O produto com código ${barcode} já existe. Deseja atualizá-lo?`)) {
+              return;
+            }
+            const productData = {
+              nome: name,
+              preco: price,
+              unidade: unit
+            };
+            set(productRef, productData)
+              .then(() => {
+                alert("Produto salvo com sucesso!");
+                resetProductForm();
+              })
+              .catch(err => alert("Erro ao salvar produto: " + err.message));
+          }, {
+            onlyOnce: true
+          });
+        } else {
+          alert("Você precisa estar logado para adicionar produtos.");
+        }
+      };
+
+      // --- Função para exibir produtos na interface ---
+      function displayProducts() {
+        const productListDiv = document.getElementById("productList");
+        productListDiv.innerHTML = "";
+        if (Object.keys(productsDatabase).length === 0) {
+          productListDiv.innerHTML = "<p>Nenhum produto cadastrado.</p>";
+          return;
+        }
+
+        const table = document.createElement("table");
+        table.style.width = "100%";
+        table.style.borderCollapse = "collapse";
+        table.innerHTML = `
+        <thead>
+          <tr style="background-color: #007bff; color: white;">
+            <th style="padding: 10px; border: 1px solid #ddd;">Código de Barras</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Nome</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Preço (R$)</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Unidade</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Object.entries(productsDatabase).map(([barcode, product]) => `
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;">${barcode}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.nome}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.preco.toFixed(2).replace('.', ',')}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.unidade === 'kilo' ? 'Kilo' : 'Unidade'}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">
+                <button onclick="editProduct('${barcode}')">Editar</button>
+                <button onclick="deleteProduct('${barcode}')">Excluir</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+        productListDiv.appendChild(table);
+      }
+
+      // --- Função para editar produto ---
+      window.editProduct = (barcode) => {
+        const product = productsDatabase[barcode];
+        if (product) {
+          document.getElementById("newProductBarcode").value = barcode;
+          document.getElementById("newProductName").value = product.nome;
+          document.getElementById("newProductPrice").value = product.preco;
+          document.getElementById("newProductUnit").value = product.unidade || "unidade";
+          document.getElementById("newProductBarcode").disabled = true;
+          document.getElementById("addProductBtn").textContent = "Atualizar Produto";
+        }
+      };
+
+      // --- Função para excluir produto ---
+      window.deleteProduct = (barcode) => {
+        const confirmacao = confirm(`Tem certeza que deseja excluir o produto com código ${barcode}?`);
+        if (!confirmacao) return;
+
+        const user = auth.currentUser;
+        if (user) {
+          const productRef = ref(db, `produtos/${user.uid}/${barcode}`);
+          remove(productRef)
+            .then(() => {
+              alert("Produto excluído com sucesso!");
+            })
+            .catch(err => alert("Erro ao excluir produto: " + err.message));
+        }
+      };
+
+      // --- Função para resetar o formulário de produtos ---
+      function resetProductForm() {
+        document.getElementById("newProductBarcode").value = "";
+        document.getElementById("newProductName").value = "";
+        document.getElementById("newProductPrice").value = "";
+        document.getElementById("newProductUnit").value = "unidade";
+        document.getElementById("newProductBarcode").disabled = false;
+        document.getElementById("addProductBtn").textContent = "Salvar Produto";
+      }
+
+      // --- Função para alternar visibilidade da lista de produtos ---
+      document.getElementById("toggleProductListBtn").onclick = () => {
+        const productListDiv = document.getElementById("productList");
+        const toggleBtn = document.getElementById("toggleProductListBtn");
+        if (productListDiv.style.display === "none") {
+          productListDiv.style.display = "block";
+          toggleBtn.textContent = "Ocultar Produtos";
+        } else {
+          productListDiv.style.display = "none";
+          toggleBtn.textContent = "Mostrar Produtos";
+        }
+      };
+
+      // --- Funções da Venda Ativa ---
+      document.getElementById("barcodeInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const barcode = this.value.trim();
+          if (barcode) {
+            addItemToActiveSale(barcode);
+            this.value = "";
+          }
+        }
+      });
+
+      function addItemToActiveSale(barcode) {
+        let product;
+        let quantidade = 1;
+        let preco;
+
+        if (barcode.startsWith('2') && barcode.length === 13) {
+          // Produto a granel com preço codificado nos dígitos 8-12
+          const productCode = barcode.slice(1, 7); // Extrai dígitos 2-7 (006400)
+          const priceCents = parseInt(barcode.slice(7, 12)); // Extrai dígitos 8-12 (00287 = 287 centavos)
+          product = productsDatabase[productCode];
+          if (product && product.unidade === 'kilo') {
+            preco = priceCents / 100; // Converte centavos para reais (287 → 2.87)
+            quantidade = preco / product.preco; // Calcula peso: preço ÷ preço por kg (2.87 ÷ 35.00 = 0.082 kg)
+            if (isNaN(quantidade) || quantidade <= 0) {
+              alert("Erro ao calcular o peso do produto. Verifique o preço por kg.");
+              return;
+            }
+          } else {
+            alert(`Produto com código ${productCode} não encontrado ou não é do tipo 'kilo'.`);
+            return;
+          }
+        } else {
+          // Produto unitário ou a granel sem balança
+          product = productsDatabase[barcode];
+          if (!product) {
+            alert(`Produto com código ${barcode} não encontrado. Por favor, cadastre-o.`);
+            return;
+          }
+          if (product.unidade === 'kilo') {
+            alert(`Produto ${product.nome} é do tipo 'kilo', mas o código de barras não indica peso. Cadastre com código iniciando em '2' ou insira manualmente.`);
+            return;
+          } else {
+            preco = product.preco;
+            quantidade = 1; // Quantidade fixa para produtos unitários
+          }
+        }
+
+        activeSaleItems.push({
+          numero: activeSaleItems.length + 1,
+          codigo: barcode,
+          nome: product.nome,
+          preco: preco,
+          quantidade: quantidade,
+          unidade: product.unidade
+        });
+        updateActiveSaleDisplay();
+      }
+
+      window.removeItemFromActiveSale = (itemNumber) => {
+        const initialLength = activeSaleItems.length;
+        activeSaleItems = activeSaleItems.filter(item => item.numero !== itemNumber);
+        if (activeSaleItems.length < initialLength) {
+          activeSaleItems.forEach((item, index) => {
+            item.numero = index + 1;
+          });
+          updateActiveSaleDisplay();
+        } else {
+          alert("Item não encontrado para remoção.");
+        }
+      };
+
+      function updateActiveSaleDisplay() {
+        const itemListDiv = document.getElementById("activeSaleItems");
+        itemListDiv.innerHTML = "";
+        let currentTotal = 0;
+
+        if (activeSaleItems.length === 0) {
+          itemListDiv.innerHTML = "<p>Nenhum item adicionado ainda.</p>";
+        } else {
+          activeSaleItems.forEach(item => {
+            const itemDiv = document.createElement("div");
+            itemDiv.classList.add("sale-item");
+            const quantidadeDisplay = item.unidade === 'kilo' ?
+              `${(item.quantidade * 1000).toFixed(0)}g` :
+              `${item.quantidade} un`;
+            itemDiv.innerHTML = `
+            <span>${item.numero}. ${item.nome} (${quantidadeDisplay}) - R$ ${item.preco.toFixed(2).replace('.', ',')}</span>
+            <button onclick="removeItemFromActiveSale(${item.numero})" class="remove-item-btn">Remover</button>
+          `;
+            itemListDiv.appendChild(itemDiv);
+            currentTotal += item.preco;
+          });
+        }
+        document.getElementById("currentSaleTotal").textContent = `R$ ${currentTotal.toFixed(2).replace('.', ',')}`;
+        document.getElementById("finalizarVendaBtn").disabled = activeSaleItems.length === 0;
+      }
+
+      document.getElementById("finalizarVendaBtn").onclick = () => {
+        if (activeSaleItems.length === 0) {
+          alert("Adicione itens à venda antes de finalizar.");
+          return;
+        }
+        const total = activeSaleItems.reduce((sum, item) => sum + item.preco, 0);
+        document.getElementById("modalTotalValue").textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        document.getElementById("paymentModal").style.display = "block";
+        document.getElementById("amountGivenContainer").style.display = "none";
+        document.getElementById("changeDue").textContent = "R$ 0,00";
+        document.getElementById("modalPaymentType").value = "Pix";
+      };
+
+      document.querySelector(".close-button").onclick = () => {
+        document.getElementById("paymentModal").style.display = "none";
+      };
+
+      document.getElementById("modalPaymentType").onchange = function() {
+        if (this.value === "Dinheiro") {
+          document.getElementById("amountGivenContainer").style.display = "block";
+          document.getElementById("amountGiven").focus();
+        } else {
+          document.getElementById("amountGivenContainer").style.display = "none";
+          document.getElementById("changeDue").textContent = "R$ 0,00";
+          document.getElementById("amountGiven").value = "";
+        }
+      };
+
+      document.getElementById("amountGiven").oninput = function() {
+        const total = activeSaleItems.reduce((sum, item) => sum + item.preco, 0);
+        const amountGiven = parseFloat(this.value) || 0;
+        const change = amountGiven - total;
+        document.getElementById("changeDue").textContent = `R$ ${change.toFixed(2).replace('.', ',')}`;
+        document.getElementById("confirmPaymentBtn").disabled = amountGiven < total && document.getElementById("modalPaymentType").value === "Dinheiro";
+      };
+
+      document.getElementById("confirmPaymentBtn").onclick = () => {
+        const total = activeSaleItems.reduce((sum, item) => sum + item.preco, 0);
+        const paymentType = document.getElementById("modalPaymentType").value;
+        const amountGiven = parseFloat(document.getElementById("amountGiven").value) || 0;
+
+        if (paymentType === "Dinheiro" && amountGiven < total) {
+          alert("O valor dado pelo cliente é menor que o total da venda.");
+          return;
+        }
+
+        const user = auth.currentUser;
+        if (user) {
+          const now = new Date();
+          const dataVenda = now.toISOString().slice(0, 16);
+
+          const saleData = {
+            dataVenda: dataVenda,
+            valorTotal: total,
+            tipoPagamento: paymentType,
+            items: activeSaleItems.map(item => ({
+              codigo: item.codigo,
+              nome: item.nome,
+              preco: item.preco,
+              quantidade: item.quantidade,
+              unidade: item.unidade
+            })),
+            observacoes: "Venda PDV"
+          };
+
+          const baseRef = ref(db, `vendas/${user.uid}`);
+          const newSaleRef = push(baseRef);
+          set(newSaleRef, saleData).then(() => {
+            alert("Venda registrada com sucesso!");
+            printSaleReceipt(saleData, amountGiven);
+            cancelActiveSale();
+            document.getElementById("paymentModal").style.display = "none";
+            loadAllSalesAndFilter(user.uid);
+          }).catch(err => alert("Erro ao registrar venda: " + err.message));
+        } else {
+          alert("Você precisa estar logado para registrar vendas.");
+        }
+      };
+
+      document.getElementById("cancelSaleBtn").onclick = () => {
+        const confirmCancel = confirm("Tem certeza que deseja cancelar a venda atual?");
+        if (confirmCancel) {
+          cancelActiveSale();
+          alert("Venda cancelada.");
+        }
+      };
+
+      function cancelActiveSale() {
+        activeSaleItems = [];
+        updateActiveSaleDisplay();
+        document.getElementById("barcodeInput").value = "";
+        document.getElementById("paymentModal").style.display = "none";
+      }
+
+      function printSaleReceipt(sale, amountGiven) {
+        const {
+          jsPDF
+        } = window.jspdf;
+        const doc = new jsPDF();
+
+        const shopName = "VIDA SAUDAVEL";
+        const now = new Date();
+        const dateTime = now.toLocaleString('pt-BR');
+
+        let yPos = 10;
+        const margin = 10;
+        const lineHeight = 7;
+
+        doc.setFontSize(14);
+        doc.text(shopName, doc.internal.pageSize.getWidth() / 2, yPos, {
+          align: 'center'
+        });
+        yPos += lineHeight;
+
+        doc.setFontSize(10);
+        doc.text(`Data: ${dateTime}`, margin, yPos);
+        yPos += lineHeight;
+        doc.text("-----------------------------------------", margin, yPos);
+        yPos += lineHeight;
+
+        doc.text("ITENS DA VENDA:", margin, yPos);
+        yPos += lineHeight;
+
+        sale.items.forEach(item => {
+          const quantidadeDisplay = item.unidade === 'kilo' ?
+            `${(item.quantidade * 1000).toFixed(0)}g` :
+            `${item.quantidade} un`;
+          doc.text(`${item.numero}. ${item.nome} (${quantidadeDisplay})`, margin, yPos);
+          doc.text(`R$ ${item.preco.toFixed(2).replace('.', ',')}`, doc.internal.pageSize.getWidth() - margin, yPos, {
+            align: 'right'
+          });
+          yPos += lineHeight;
+        });
+
+        doc.text("-----------------------------------------", margin, yPos);
+        yPos += lineHeight;
+
+        doc.setFontSize(12);
+        doc.text(`TOTAL: R$ ${sale.valorTotal.toFixed(2).replace('.', ',')}`, margin, yPos);
+        doc.text(`Pagamento: ${sale.tipoPagamento}`, margin, yPos + lineHeight);
+        yPos += lineHeight * 2;
+
+        if (sale.tipoPagamento === "Dinheiro") {
+          const change = amountGiven - sale.valorTotal;
+          doc.text(`Valor Recebido: R$ ${amountGiven.toFixed(2).replace('.', ',')}`, margin, yPos);
+          yPos += lineHeight;
+          doc.text(`Troco: R$ ${change.toFixed(2).replace('.', ',')}`, margin, yPos);
+          yPos += lineHeight;
+        }
+
+        doc.text("-----------------------------------------", margin, yPos);
+        yPos += lineHeight;
+        doc.setFontSize(10);
+        doc.text("Obrigado pela preferência!", doc.internal.pageSize.getWidth() / 2, yPos, {
+          align: 'center'
+        });
+
+        doc.save(`venda_${now.getTime()}.pdf`);
+      }
+
+      document.getElementById("submitSale").onclick = () => {
+        const valorTotal = parseFloat(document.getElementById("valorTotal").value) || 0;
+        const tipoPagamento = document.getElementById("tipoPagamento").value;
+        const observacoes = document.getElementById("observacoes").value;
+        const dataVenda = document.getElementById("dataVenda").value;
+
+        if (valorTotal <= 0) {
+          alert("O valor total da venda deve be maior que zero.");
+          return;
+        }
+
+        const data = {
+          dataVenda: dataVenda,
+          valorTotal: valorTotal,
+          tipoPagamento: tipoPagamento,
+          observacoes: observacoes,
+          items: []
+        };
+
+        const user = auth.currentUser;
+        if (user) {
+          const baseRef = ref(db, `vendas/${user.uid}`);
+          if (editId) {
+            update(ref(db, `vendas/${user.uid}/${editId}`), data)
+              .then(() => {
+                alert("Venda atualizada!");
+                editId = null;
+                limparFormulario();
+                loadAllSalesAndFilter(user.uid);
+              })
+              .catch(err => alert("Erro ao atualizar venda: " + err.message));
+          } else {
+            const newSaleRef = push(baseRef);
+            set(newSaleRef, data).then(() => {
+              alert("Venda registrada!");
+              limparFormulario();
+              loadAllSalesAndFilter(user.uid);
+            }).catch(err => alert("Erro ao registrar venda: " + err.message));
+          }
+        } else {
+          alert("Você precisa estar logado para registrar vendas.");
+        }
+      };
+
+      function loadAllSalesAndFilter(uid) {
+        const vendasRef = ref(db, `vendas/${uid}`);
+        onValue(vendasRef, snapshot => {
+          allSalesData = [];
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            Object.entries(data).forEach(([key, item]) => {
+              allSalesData.push({
+                id: key,
+                ...item
+              });
+            });
+          }
+          applyFiltersAndDisplaySales();
+          calculateAndDisplayPeriodTotals(allSalesData);
+        });
+      }
+
+      function applyFiltersAndDisplaySales() {
+        const container = document.getElementById("saleList");
+        container.innerHTML = "";
+        let currentTotalSales = 0;
+
+        const filterDateStartStr = document.getElementById("filterDateStart").value;
+        const filterDateEndStr = document.getElementById("filterDateEnd").value;
+        const filterPaymentType = document.getElementById("filterPaymentType").value;
+
+        const filterDateStart = filterDateStartStr ? new Date(filterDateStartStr + 'T00:00:00') : null;
+        const filterDateEnd = filterDateEndStr ? new Date(filterDateEndStr + 'T23:59:59') : null;
+
+        filteredSalesData = allSalesData.filter(sale => {
+          const saleDate = new Date(sale.dataVenda);
+          const matchesDate = (!filterDateStart || saleDate >= filterDateStart) &&
+            (!filterDateEnd || saleDate <= filterDateEnd);
+          const matchesPaymentType = (filterPaymentType === "Todos" || sale.tipoPagamento === filterPaymentType);
+          return matchesDate && matchesPaymentType;
+        });
+
+        if (filteredSalesData.length > 0) {
+          filteredSalesData.forEach(item => {
+            currentTotalSales += item.valorTotal;
+            const div = document.createElement("div");
+            div.style.border = "1px solid #ccc";
+            div.style.margin = "10px";
+            div.style.padding = "10px";
+            const itemsList = item.items && item.items.length > 0 ?
+              item.items.map(i => {
+                const quantidadeDisplay = i.unidade === 'kilo' ?
+                  `${(i.quantidade * 1000).toFixed(0)}g` :
+                  `${i.quantidade} un`;
+                return `<li>${i.nome} (${quantidadeDisplay}, R$ ${i.preco.toFixed(2).replace('.', ',')})</li>`;
+              }).join('') : '';
+            div.innerHTML = `
+            <strong>Data/Hora:</strong> ${item.dataVenda ? new Date(item.dataVenda).toLocaleString('pt-BR') : 'N/A'}<br>
+            <strong>Valor Total:</strong> R$ ${item.valorTotal ? item.valorTotal.toFixed(2).replace('.', ',') : '0,00'}<br>
+            <strong>Tipo de Pagamento:</strong> ${item.tipoPagamento}<br>
+            <strong>Obs.:</strong> ${item.observacoes || 'N/A'}<br>
+            ${itemsList ? `<strong>Itens:</strong><ul>${itemsList}</ul>` : ''}
+            <button onclick="editarVenda('${item.id}')">Editar</button>
+            <button onclick="excluirVenda('${item.id}')">Excluir</button>
+          `;
+            container.appendChild(div);
+          });
+        } else {
+          container.innerHTML = "Nenhuma venda encontrada com os filtros aplicados.";
+        }
+        document.getElementById("totalSalesValue").textContent = `R$ ${currentTotalSales.toFixed(2).replace('.', ',')}`;
+      }
+
+      document.getElementById("applyFiltersBtn").onclick = () => {
+        applyFiltersAndDisplaySales();
+      };
+
+      function calculateAndDisplayPeriodTotals(sales) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        endOfMonth.setHours(23, 59, 59, 999);
+
+        let totalDay = 0;
+        let totalWeek = 0;
+        let totalMonth = 0;
+
+        sales.forEach(sale => {
+          const saleDate = new Date(sale.dataVenda);
+          saleDate.setHours(0, 0, 0, 0);
+
+          if (saleDate.toDateString() === today.toDateString()) {
+            totalDay += sale.valorTotal;
+          }
+
+          if (saleDate >= startOfWeek && saleDate <= endOfWeek) {
+            totalWeek += sale.valorTotal;
+          }
+
+          if (saleDate >= startOfMonth && saleDate <= endOfMonth) {
+            totalMonth += sale.valorTotal;
+          }
+        });
+
+        document.getElementById("totalDaySales").textContent = `R$ ${totalDay.toFixed(2).replace('.', ',')}`;
+        document.getElementById("totalWeekSales").textContent = `R$ ${totalWeek.toFixed(2).replace('.', ',')}`;
+        document.getElementById("totalMonthSales").textContent = `R$ ${totalMonth.toFixed(2).replace('.', ',')}`;
+      }
+
+      window.editarVenda = (id) => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const itemRef = ref(db, `vendas/${user.uid}/${id}`);
+        onValue(itemRef, snapshot => {
+          if (snapshot.exists()) {
+            const item = snapshot.val();
+            document.getElementById("dataVenda").value = item.dataVenda;
+            document.getElementById("valorTotal").value = item.valorTotal;
+            document.getElementById("tipoPagamento").value = item.tipoPagamento;
+            document.getElementById("observacoes").value = item.observacoes;
+            editId = id;
+          }
+        }, {
+          onlyOnce: true
+        });
+      };
+
+      window.excluirVenda = (id) => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const confirmacao = confirm("Tem certeza que deseja excluir esta venda?");
+        if (!confirmacao) return;
+
+        const itemRef = ref(db, `vendas/${user.uid}/${id}`);
+        remove(itemRef)
+          .then(() => {
+            alert("Venda excluída com sucesso!");
+            loadAllSalesAndFilter(user.uid);
+          })
+          .catch(err => alert("Erro ao excluir: " + err.message));
+      };
+
+      function limparFormulario() {
+        document.getElementById("valorTotal").value = "";
+        document.getElementById("tipoPagamento").value = "Pix";
+        document.getElementById("observacoes").value = "";
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById("dataVenda").value = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
+      document.getElementById("exportPdfBtn").onclick = () => {
+        if (filteredSalesData.length === 0) {
+          alert("Não há vendas para exportar.");
+          return;
+        }
+
+        const {
+          jsPDF
+        } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("Relatório de Vendas Filtradas", 10, 10);
+
+        const tableColumn = ["Data/Hora", "Valor Total", "Tipo Pagamento", "Observações", "Itens"];
+        const tableRows = [];
+
+        filteredSalesData.forEach(sale => {
+          const itemsList = sale.items && sale.items.length > 0 ?
+            sale.items.map(item => {
+              const quantidadeDisplay = item.unidade === 'kilo' ?
+                `${(item.quantidade * 1000).toFixed(0)}g` :
+                `${item.quantidade} un`;
+              return `${item.nome} (${quantidadeDisplay}, R$ ${item.preco.toFixed(2).replace('.', ',')})`;
+            }).join('\n') : 'N/A';
+          const saleData = [
+            sale.dataVenda ? new Date(sale.dataVenda).toLocaleString('pt-BR') : 'N/A',
+            `R$ ${sale.valorTotal ? sale.valorTotal.toFixed(2).replace('.', ',') : '0,00'}`,
+            sale.tipoPagamento,
+            sale.observacoes || 'N/A',
+            itemsList
+          ];
+          tableRows.push(saleData);
+        });
+
+        doc.autoTable({
+          head: [tableColumn],
+          body: tableRows,
+          startY: 20,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak'
+          },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: [255, 255, 255]
+          },
+          alternateRowStyles: {
+            fillColor: [240, 240, 240]
+          }
+        });
+
+        doc.save("relatorio_vendas_filtradas.pdf");
+      };
+
+      document.getElementById("exportExcelBtn").onclick = () => {
+        if (filteredSalesData.length === 0) {
+          alert("Não há vendas para exportar.");
+          return;
+        }
+
+        const dataToExport = filteredSalesData.map(sale => {
+          const itemsDetail = sale.items && sale.items.length > 0 ?
+            sale.items.map(item => {
+              const quantidadeDisplay = item.unidade === 'kilo' ?
+                `${(item.quantidade * 1000).toFixed(0)}g` :
+                `${item.quantidade} un`;
+              return `${item.nome} (${quantidadeDisplay}, R$ ${item.preco.toFixed(2).replace('.', ',')})`;
+            }).join('; ') : '';
+          return {
+            "Data/Hora da Venda": sale.dataVenda ? new Date(sale.dataVenda).toLocaleString('pt-BR') : 'N/A',
+            "Valor Total": sale.valorTotal,
+            "Tipo de Pagamento": sale.tipoPagamento,
+            "Observações": sale.observacoes || 'N/A',
+            "Itens da Venda": itemsDetail
+          };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Vendas");
+        XLSX.writeFile(workbook, "relatorio_vendas.xlsx");
+      };
+
+      document.getElementById("sendReportBtn").onclick = () => {
+        const phoneNumber = document.getElementById("phoneNumber").value.trim();
+        if (!phoneNumber) {
+          alert("Por favor, insira um número de telefone.");
+          return;
+        }
+
+        if (filteredSalesData.length === 0) {
+          alert("Não há vendas para enviar no relatório.");
+          return;
+        }
+
+        let reportMessage = "Relatório de Vendas Filtradas:\n\n";
+        filteredSalesData.forEach(sale => {
+          reportMessage += `Data/Hora: ${sale.dataVenda ? new Date(sale.dataVenda).toLocaleString('pt-BR') : 'N/A'}\n`;
+          reportMessage += `Valor Total: R$ ${sale.valorTotal ? sale.valorTotal.toFixed(2).replace('.', ',') : '0,00'}\n`;
+          reportMessage += `Tipo de Pagamento: ${sale.tipoPagamento}\n`;
+          reportMessage += `Obs.: ${sale.observacoes || 'N/A'}\n`;
+          if (sale.items && sale.items.length > 0) {
+            reportMessage += "Itens:\n";
+            sale.items.forEach(item => {
+              const quantidadeDisplay = item.unidade === 'kilo' ?
+                `${(item.quantidade * 1000).toFixed(0)}g` :
+                `${item.quantidade} un`;
+              reportMessage += `  - ${item.nome} (${quantidadeDisplay}, R$ ${item.preco.toFixed(2).replace('.', ',')})\n`;
+            });
+          }
+          reportMessage += "--------------------------------------\n";
+        });
+        reportMessage += `\nTotal Geral das Vendas Filtradas: R$ ${filteredSalesData.reduce((acc, sale) => acc + sale.valorTotal, 0).toFixed(2).replace('.', ',')}`;
+
+        const confirmSend = confirm("Isso abrirá o WhatsApp/SMS com a mensagem preenchida. Deseja continuar?");
+        if (confirmSend) {
+          const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(reportMessage)}`;
+          window.open(whatsappUrl, '_blank');
+          alert("Tentando abrir o WhatsApp para enviar o relatório. Se não funcionar, verifique se o número está correto e se o WhatsApp está configurado.");
+        }
+      };
+    </script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f4;
+      }
+
+      h2,
+      h3 {
+        color: #333;
+      }
+
+      div {
+        background-color: #fff;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      input[type="email"],
+      input[type="password"],
+      input[type="datetime-local"],
+      input[type="date"],
+      input[type="text"],
+      input[type="number"],
+      select,
+      textarea {
+        width: calc(100% - 22px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      select#newProductUnit {
+        width: calc(100% - 22px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 5px;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #saleList div {
+        border: 1px solid #eee;
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f9f9f9;
+      }
+
+      .download-buttons button,
+      .report-section button {
+        background-color: #28a745;
+        margin-top: 10px;
+      }
+
+      .download-buttons button:hover,
+      .report-section button:hover {
+        background-color: #218838;
+      }
+
+      .report-section input[type="text"] {
+        width: auto;
+        display: inline-block;
+        margin-right: 10px;
+      }
+
+      .total-sales {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #007bff;
+        margin-top: 15px;
+        text-align: right;
+      }
+
+      .filters {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background-color: #f0f8ff;
+      }
+
+      .filters label {
+        margin-right: 10px;
+        font-weight: bold;
+      }
+
+      .filters input,
+      .filters select,
+      .filters button {
+        margin-right: 10px;
+        margin-bottom: 5px;
+      }
+
+      .period-totals {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e6f7ff;
+        border-radius: 8px;
+        border: 1px solid #b3e0ff;
+      }
+
+      .period-totals div {
+        text-align: center;
+        padding: 10px;
+        flex: 1;
+        background-color: transparent;
+        box-shadow: none;
+      }
+
+      .period-totals strong {
+        display: block;
+        font-size: 1.1em;
+        color: #0056b3;
+        margin-bottom: 5px;
+      }
+
+      .period-totals span {
+        font-size: 1.3em;
+        font-weight: bold;
+        color: #007bff;
+      }
+
+      #activeSaleSection {
+        border: 2px solid #007bff;
+        padding: 20px;
+        margin-top: 20px;
+        background-color: #eaf6ff;
+      }
+
+      #barcodeInput {
+        font-size: 1.2em;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 2px solid #0056b3;
+      }
+
+      .sale-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px dashed #ccc;
+      }
+
+      .sale-item:last-child {
+        border-bottom: none;
+      }
+
+      .remove-item-btn {
+        background-color: #dc3545;
+        padding: 5px 10px;
+        font-size: 0.8em;
+      }
+
+      .remove-item-btn:hover {
+        background-color: #c82333;
+      }
+
+      #currentSaleTotal {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #007bff;
+        text-align: right;
+        margin-top: 15px;
+      }
+
+      #saleActions button {
+        width: 48%;
+        margin-top: 10px;
+      }
+
+      #cancelSaleBtn {
+        background-color: #6c757d;
+      }
+
+      #cancelSaleBtn:hover {
+        background-color: #5a6268;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+        padding-top: 60px;
+      }
+
+      .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 10px;
+        position: relative;
+      }
+
+      .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        position: absolute;
+        right: 15px;
+        top: 10px;
+      }
+
+      .close-button:hover,
+      .close-button:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      #amountGivenContainer {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #eee;
+      }
+
+      #changeDue {
+        font-size: 1.3em;
+        font-weight: bold;
+        color: #28a745;
+        text-align: center;
+        margin-top: 10px;
+      }
+
+      #confirmPaymentBtn {
+        background-color: #28a745;
+        width: 100%;
+        margin-top: 20px;
+        font-size: 1.1em;
+      }
+
+      #productList table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      #productList th,
+      #productList td {
+        padding: 10px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+
+      #productList th {
+        background-color: #007bff;
+        color: white;
+      }
+
+      #productList tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      #productList button {
+        margin-right: 5px;
+        padding: 5px 10px;
+        font-size: 0.9em;
+      }
+
+      #productList button:nth-child(2) {
+        background-color: #dc3545;
+      }
+
+      #productList button:nth-child(2):hover {
+        background-color: #c82333;
+      }
+
+      #toggleProductListBtn {
+        background-color: #6c757d;
+        margin-bottom: 10px;
+      }
+
+      #toggleProductListBtn:hover {
+        background-color: #5a6268;
+      }
+    </style>
+
+
+
+  </body>
+
+</html>
