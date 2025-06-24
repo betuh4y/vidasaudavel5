@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
   <head>
+    <meta charset="UTF-8">
+    <title>Sistema de Vendas (PDV) - VIDA SAUDAVEL</title>
+    <link rel="stylesheet" href="./index.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.js"></script>
     <style>
       body {
         margin: 0;
@@ -13,7 +18,6 @@
         padding: 20px 0;
         text-align: center;
         background-color: #f0f0f0;
-        /* Opcional: cor de fundo do cabeçalho */
       }
 
       header img {
@@ -21,33 +25,15 @@
         height: auto;
       }
     </style>
-    <script type="text/javascript" src="./index.js" defer=""></script>
-    <link rel="stylesheet" href="./index.css">
   </head>
 
   <body>
-
     <header>
       <a href="https://ibb.co/7dV11YHH">
         <img src="https://i.ibb.co/xtG77Cyy/Whats-App-Image-2025-06-22-at-18-08-09.jpg" alt="Whats-App-Image-2025-06-22-at-18-08-09" border="0">
       </a>
     </header>
 
-
-
-    <meta charset="UTF-8">
-    <title>Sistema de Vendas (PDV) - VIDA SAUDAVEL</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/jspdf-autotable@3.8.0/dist/jspdf.plugin.autotable.js"></script>
-    <script type="text/javascript" src="./index.js" defer=""></script>
-    <link rel="stylesheet" href="./index.css">
-    <script type="text/javascript" src="./index.js" defer=""></script>
-    <link rel="stylesheet" href="./index.css">
-
-
-
-    
     <div id="authSection">
       <h3>Login / Cadastro</h3>
       <input type="email" id="email" placeholder="Email"><br>
@@ -63,7 +49,7 @@
       <h3>Nova Venda (PDV)</h3>
       <div>
         <label for="barcodeInput">Ler Código de Barras:</label>
-        <input type="text" id="barcodeInput" placeholder="Código de Barras do Produto" autofocus="">
+        <input type="text" id="barcodeInput" placeholder="Código de Barras do Produto" autofocus>
         <p>Pressione **Enter** após ler o código.</p>
 
         <h4>Itens na Venda:</h4>
@@ -131,8 +117,8 @@
       <hr>
       <h3>Registrar Venda Manual (Alternativa)</h3>
       <label for="dataVenda">Data e Hora da Venda:</label>
-      <input type="datetime-local" id="dataVenda" required=""><br>
-      <input type="number" id="valorTotal" placeholder="Valor Total da Venda (R$)" step="0.01" required=""><br>
+      <input type="datetime-local" id="dataVenda" required><br>
+      <input type="number" id="valorTotal" placeholder="Valor Total da Venda (R$)" step="0.01" required><br>
       <label for="tipoPagamento">Tipo de Pagamento:</label>
       <select id="tipoPagamento">
         <option value="Pix">Pix</option>
@@ -579,17 +565,20 @@
         const total = activeSaleItems.reduce((sum, item) => sum + item.preco, 0);
         const paymentType = document.getElementById("modalPaymentType").value;
         const amountGiven = parseFloat(document.getElementById("amountGiven").value) || 0;
+        const dataVenda = document.getElementById("dataVenda").value;
 
         if (paymentType === "Dinheiro" && amountGiven < total) {
           alert("O valor dado pelo cliente é menor que o total da venda.");
           return;
         }
 
+        if (!dataVenda) {
+          alert("Por favor, preencha a data e hora da venda no campo 'Data e Hora da Venda'.");
+          return;
+        }
+
         const user = auth.currentUser;
         if (user) {
-          const now = new Date();
-          const dataVenda = now.toISOString().slice(0, 16);
-
           const saleData = {
             dataVenda: dataVenda,
             valorTotal: total,
@@ -634,14 +623,11 @@
       }
 
       function printSaleReceipt(sale, amountGiven) {
-        const {
-          jsPDF
-        } = window.jspdf;
+        const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
         const shopName = "VIDA SAUDAVEL";
-        const now = new Date();
-        const dateTime = now.toLocaleString('pt-BR');
+        const dateTime = new Date(sale.dataVenda).toLocaleString('pt-BR');
 
         let yPos = 10;
         const margin = 10;
@@ -696,7 +682,7 @@
           align: 'center'
         });
 
-        doc.save(`venda_${now.getTime()}.pdf`);
+        doc.save(`venda_${new Date(sale.dataVenda).getTime()}.pdf`);
       }
 
       document.getElementById("submitSale").onclick = () => {
@@ -706,7 +692,12 @@
         const dataVenda = document.getElementById("dataVenda").value;
 
         if (valorTotal <= 0) {
-          alert("O valor total da venda deve be maior que zero.");
+          alert("O valor total da venda deve ser maior que zero.");
+          return;
+        }
+
+        if (!dataVenda) {
+          alert("Por favor, preencha a data e hora da venda.");
           return;
         }
 
@@ -914,9 +905,7 @@
           return;
         }
 
-        const {
-          jsPDF
-        } = window.jspdf;
+        const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
 
         doc.setFontSize(16);
@@ -1337,9 +1326,5 @@
         background-color: #5a6268;
       }
     </style>
-
-
-
   </body>
-
 </html>
