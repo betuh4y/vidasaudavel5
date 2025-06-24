@@ -229,6 +229,17 @@
       let activeSaleItems = [];
       let productsDatabase = {};
 
+      // Função para atualizar o campo dataVenda com o horário atual
+      function updateDataVenda() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById("dataVenda").value = `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
       // --- Funções de Autenticação ---
       document.getElementById("registerBtn").onclick = () => {
         const email = document.getElementById("email").value;
@@ -258,19 +269,11 @@
           document.getElementById("authSection").style.display = "none";
           document.getElementById("saleSection").style.display = "block";
           loadAllSalesAndFilter(user.uid);
-          const now = new Date();
-          const year = now.getFullYear();
-          const month = String(now.getMonth() + 1).padStart(2, '0');
-          const day = String(now.getDate()).padStart(2, '0');
-          const hours = String(now.getHours()).padStart(2, '0');
-          const minutes = String(now.getMinutes()).padStart(2, '0');
-          document.getElementById("dataVenda").value = `${year}-${month}-${day}T${hours}:${minutes}`;
-
+          updateDataVenda(); // Inicializa o campo dataVenda com o horário atual
           const today = new Date();
           const todayFormatted = today.toISOString().split('T')[0];
           document.getElementById("filterDateStart").value = todayFormatted;
           document.getElementById("filterDateEnd").value = todayFormatted;
-
           cancelActiveSale();
           loadProductsFromDatabase();
         } else {
@@ -444,13 +447,12 @@
         let preco;
 
         if (barcode.startsWith('2') && barcode.length === 13) {
-          // Produto a granel com preço codificado nos dígitos 8-12
-          const productCode = barcode.slice(1, 7); // Extrai dígitos 2-7 (006400)
-          const priceCents = parseInt(barcode.slice(7, 12)); // Extrai dígitos 8-12 (00287 = 287 centavos)
+          const productCode = barcode.slice(1, 7);
+          const priceCents = parseInt(barcode.slice(7, 12));
           product = productsDatabase[productCode];
           if (product && product.unidade === 'kilo') {
-            preco = priceCents / 100; // Converte centavos para reais (287 → 2.87)
-            quantidade = preco / product.preco; // Calcula peso: preço ÷ preço por kg (2.87 ÷ 35.00 = 0.082 kg)
+            preco = priceCents / 100;
+            quantidade = preco / product.preco;
             if (isNaN(quantidade) || quantidade <= 0) {
               alert("Erro ao calcular o peso do produto. Verifique o preço por kg.");
               return;
@@ -460,7 +462,6 @@
             return;
           }
         } else {
-          // Produto unitário ou a granel sem balança
           product = productsDatabase[barcode];
           if (!product) {
             alert(`Produto com código ${barcode} não encontrado. Por favor, cadastre-o.`);
@@ -471,7 +472,7 @@
             return;
           } else {
             preco = product.preco;
-            quantidade = 1; // Quantidade fixa para produtos unitários
+            quantidade = 1;
           }
         }
 
@@ -530,6 +531,7 @@
           alert("Adicione itens à venda antes de finalizar.");
           return;
         }
+        updateDataVenda(); // Atualiza o campo dataVenda com o horário atual
         const total = activeSaleItems.reduce((sum, item) => sum + item.preco, 0);
         document.getElementById("modalTotalValue").textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         document.getElementById("paymentModal").style.display = "block";
@@ -686,6 +688,7 @@
       }
 
       document.getElementById("submitSale").onclick = () => {
+        updateDataVenda(); // Atualiza o campo dataVenda com o horário atual
         const valorTotal = parseFloat(document.getElementById("valorTotal").value) || 0;
         const tipoPagamento = document.getElementById("tipoPagamento").value;
         const observacoes = document.getElementById("observacoes").value;
@@ -890,13 +893,7 @@
         document.getElementById("valorTotal").value = "";
         document.getElementById("tipoPagamento").value = "Pix";
         document.getElementById("observacoes").value = "";
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        document.getElementById("dataVenda").value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        updateDataVenda(); // Atualiza o campo dataVenda ao limpar o formulário
       }
 
       document.getElementById("exportPdfBtn").onclick = () => {
