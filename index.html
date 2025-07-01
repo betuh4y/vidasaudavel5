@@ -166,10 +166,20 @@
       </div>
 
       <hr>
-      <h3>Exportar Vendas</h3>
+      <h3>Ranking dos Produtos Mais Vendidos</h3>
+      <div id="rankingList">
+        <p>Nenhum dado de vendas para exibir o ranking.</p>
+      </div>
       <div class="download-buttons">
-        <button id="exportPdfBtn">Baixar PDF (Filtradas)</button>
-        <button id="exportExcelBtn">Baixar Excel (Filtradas)</button>
+        <button id="exportRankingPdfBtn">Baixar Ranking em PDF</button>
+      </div>
+
+      <hr>
+      <h3>Exportar Vendas e Estoque</h3>
+      <div class="download-buttons">
+        <button id="exportPdfBtn">Baixar PDF (Vendas Filtradas)</button>
+        <button id="exportExcelBtn">Baixar Excel (Vendas Filtradas)</button>
+        <button id="exportStockPdfBtn">Baixar PDF (Estoque Atual)</button>
       </div>
 
       <hr>
@@ -301,6 +311,7 @@
               console.log("Nenhum produto encontrado no Firebase.");
             }
             displayProducts();
+            updateRankingDisplay(); // Atualiza o ranking ao carregar produtos
           }, {
             onlyOnce: false
           });
@@ -859,6 +870,7 @@
           }
           applyFiltersAndDisplaySales();
           calculateAndDisplayPeriodTotals(allSalesData);
+          updateRankingDisplay();
         });
       }
 
@@ -911,7 +923,199 @@
           container.innerHTML = "Nenhuma venda encontrada com os filtros aplicados.";
         }
         document.getElementById("totalSalesValue").textContent = `R$ ${currentTotalSales.toFixed(2).replace('.', ',')}`;
+        updateRankingDisplay();
       }
+
+      // --- Função para calcular e exibir o ranking dos produtos mais vendidos ---
+      function updateRankingDisplay() {
+        const rankingListDiv = document.getElementById("rankingList");
+        rankingListDiv.innerHTML = "";
+
+        // Agrupar itens por produto
+        const productSales = {};
+        filteredSalesData.forEach(sale => {
+          if (sale.items && sale.items.length > 0) {
+            sale.items.forEach(item => {
+              const productCode = item.codigo.startsWith('2') && item.codigo.length === 13 ? item.codigo.slice(1, 7) : item.codigo;
+              if (!productSales[productCode]) {
+                productSales[productCode] = {
+                  nome: item.nome,
+                  unidade: item.unidade,
+                  quantidade: 0,
+                  valorTotal: 0
+                };
+              }
+              productSales[productCode].quantidade += item.quantidade;
+              productSales[productCode].valorTotal += item.preco;
+            });
+          }
+        });
+
+        // Converter para array e ordenar por quantidade decrescente
+        const ranking = Object.entries(productSales)
+          .map(([code, data]) => ({
+            code,
+            ...data
+          }))
+          .sort((a, b) => b.quantidade - a.quantidade);
+
+        if (ranking.length === 0) {
+          rankingListDiv.innerHTML = "<p>Nenhum dado de vendas para exibir o ranking.</p>";
+          return;
+        }
+
+        const table = document.createElement("table");
+        table.style.width = "100%";
+        table.style.borderCollapse = "collapse";
+        table.innerHTML = `
+        <thead>
+          <tr style="background-color: #007bff; color: white;">
+            <th style="padding: 10px; border: 1px solid #ddd;">Posição</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Código</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Nome</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Unidade</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Quantidade Vendida</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Valor Total (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ranking.map((product, index) => `
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;">${index + 1}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.code}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.nome}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.unidade === 'kilo' ? 'Kilo' : 'Unidade'}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.unidade === 'kilo' ? (product.quantidade * 1000).toFixed(0) + 'g' : product.quantidade + ' un'}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${product.valorTotal.toFixed(2).replace('.', ',')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+        rankingListDiv.appendChild(table);
+      }
+
+      // --- Função para exportar o ranking em PDF ---
+      document.getElementById("exportRankingPdfBtn").onclick = () => {
+        const productSales = {};
+        filteredSalesData.forEach(sale => {
+          if (sale.items && sale.items.length > 0) {
+            sale.items.forEach(item => {
+              const productCode = item.codigo.startsWith('2') && item.codigo.length === 13 ? item.codigo.slice(1, 7) : item.codigo;
+              if (!productSales[productCode]) {
+                productSales[productCode] = {
+                  nome: item.nome,
+                  unidade: item.unidade,
+                  quantidade: 0,
+                  valorTotal: 0
+                };
+              }
+              productSales[productCode].quantidade += item.quantidade;
+              productSales[productCode].valorTotal += item.preco;
+            });
+          }
+        });
+
+        const ranking = Object.entries(productSales)
+          .map(([code, data]) => ({
+            code,
+            ...data
+          }))
+          .sort((a, b) => b.quantidade - a.quantidade);
+
+        if (ranking.length === 0) {
+          alert("Não há dados de vendas para exportar o ranking.");
+          return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("Ranking de Produtos Mais Vendidos", 10, 10);
+
+        const filterDateStartStr = document.getElementById("filterDateStart").value;
+        const filterDateEndStr = document.getElementById("filterDateEnd").value;
+        const filterPaymentType = document.getElementById("filterPaymentType").value;
+        let filterText = `Período: ${filterDateStartStr || 'Início'} até ${filterDateEndStr || 'Hoje'}`;
+        filterText += `\nTipo de Pagamento: ${filterPaymentType === 'Todos' ? 'Todos' : filterPaymentType}`;
+        doc.setFontSize(10);
+        doc.text(filterText, 10, 20);
+
+        const tableColumn = ["Posição", "Código", "Nome", "Unidade", "Quantidade Vendida", "Valor Total (R$)"];
+        const tableRows = ranking.map((product, index) => [
+          index + 1,
+          product.code,
+          product.nome,
+          product.unidade === 'kilo' ? 'Kilo' : 'Unidade',
+          product.unidade === 'kilo' ? `${(product.quantidade * 1000).toFixed(0)}g` : `${product.quantidade} un`,
+          `R$ ${product.valorTotal.toFixed(2).replace('.', ',')}`
+        ]);
+
+        doc.autoTable({
+          head: [tableColumn],
+          body: tableRows,
+          startY: 30,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak'
+          },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: [255, 255, 255]
+          },
+          alternateRowStyles: {
+            fillColor: [240, 240, 240]
+          }
+        });
+
+        doc.save("ranking_produtos_vendidos.pdf");
+      };
+
+      // --- Função para exportar o estoque em PDF ---
+      document.getElementById("exportStockPdfBtn").onclick = () => {
+        if (Object.keys(productsDatabase).length === 0) {
+          alert("Não há produtos cadastrados para exportar o estoque.");
+          return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("Relatório de Estoque Atual", 10, 10);
+        doc.setFontSize(10);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 10, 20);
+
+        const tableColumn = ["Código", "Nome", "Preço (R$)", "Unidade", "Estoque"];
+        const tableRows = Object.entries(productsDatabase).map(([barcode, product]) => [
+          barcode,
+          product.nome,
+          `R$ ${product.preco.toFixed(2).replace('.', ',')}`,
+          product.unidade === 'kilo' ? 'Kilo' : 'Unidade',
+          `${(product.estoque || 0).toFixed(3).replace('.', ',')} ${product.unidade === 'kilo' ? 'kg' : 'un'}`
+        ]);
+
+        doc.autoTable({
+          head: [tableColumn],
+          body: tableRows,
+          startY: 30,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak'
+          },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: [255, 255, 255]
+          },
+          alternateRowStyles: {
+            fillColor: [240, 240, 240]
+          }
+        });
+
+        doc.save("relatorio_estoque_atual.pdf");
+      };
 
       document.getElementById("applyFiltersBtn").onclick = () => {
         applyFiltersAndDisplaySales();
@@ -1385,25 +1589,30 @@
         font-size: 1.1em;
       }
 
-      #productList table {
+      #productList table,
+      #rankingList table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 10px;
       }
 
       #productList th,
-      #productList td {
+      #productList td,
+      #rankingList th,
+      #rankingList td {
         padding: 10px;
         border: 1px solid #ddd;
         text-align: left;
       }
 
-      #productList th {
+      #productList th,
+      #rankingList th {
         background-color: #007bff;
         color: white;
       }
 
-      #productList tr:nth-child(even) {
+      #productList tr:nth-child(even),
+      #rankingList tr:nth-child(even) {
         background-color: #f9f9f9;
       }
 
