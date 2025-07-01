@@ -48,9 +48,9 @@
       <hr>
       <h3>Nova Venda (PDV)</h3>
       <div>
-        <label for="barcodeInput">Ler Código de Barras:</label>
-        <input type="text" id="barcodeInput" placeholder="Código de Barras do Produto" autofocus>
-        <p>Pressione **Enter** após ler o código.</p>
+        <label for="barcodeInput">Ler Código de Barras ou Gramatura:</label>
+        <input type="text" id="barcodeInput" placeholder="Ex: 150 * para gramatura ou código do produto" autofocus>
+        <p>Pressione **Enter** após inserir a gramatura (ex.: 150 *) ou código do produto.</p>
 
         <h4>Itens na Venda:</h4>
         <div id="activeSaleItems">
@@ -101,6 +101,7 @@
           <option value="unidade">Unidade</option>
           <option value="kilo">Kilo</option>
         </select>
+        <input type="number" id="newProductStock" placeholder="Quantidade em Estoque (unidades ou kg)" step="0.001">
         <button id="addProductBtn">Salvar Produto</button>
         <small>Use esta seção para adicionar ou atualizar produtos que serão reconhecidos pelo leitor de código de barras.</small>
       </div>
@@ -228,6 +229,10 @@
       let filteredSalesData = [];
       let activeSaleItems = [];
       let productsDatabase = {};
+      let tempWeight = null; // Variável para armazenar a gramatura temporariamente
+
+      // Garantir foco no campo barcodeInput ao carregar a página
+      document.getElementById("barcodeInput").focus();
 
       // Função para atualizar o campo dataVenda com o horário atual
       function updateDataVenda() {
@@ -269,7 +274,7 @@
           document.getElementById("authSection").style.display = "none";
           document.getElementById("saleSection").style.display = "block";
           loadAllSalesAndFilter(user.uid);
-          updateDataVenda(); // Inicializa o campo dataVenda com o horário atual
+          updateDataVenda();
           const today = new Date();
           const todayFormatted = today.toISOString().split('T')[0];
           document.getElementById("filterDateStart").value = todayFormatted;
@@ -291,6 +296,9 @@
             productsDatabase = {};
             if (snapshot.exists()) {
               productsDatabase = snapshot.val();
+              console.log("Produtos carregados:", productsDatabase); // Log para depuração
+            } else {
+              console.log("Nenhum produto encontrado no Firebase.");
             }
             displayProducts();
           }, {
@@ -305,9 +313,15 @@
         const name = document.getElementById("newProductName").value.trim();
         const price = parseFloat(document.getElementById("newProductPrice").value);
         const unit = document.getElementById("newProductUnit").value;
+        const stock = parseFloat(document.getElementById("newProductStock").value) || 0;
 
         if (!barcode || !name || isNaN(price) || price <= 0) {
-          alert("Por favor, preencha todos os campos do produto corretamente.");
+          alert("Por favor, preencha todos os campos do produto corretamente (Código, Nome e Preço).");
+          return;
+        }
+
+        if (stock < 0) {
+          alert("A quantidade em estoque não pode ser negativa.");
           return;
         }
 
@@ -321,7 +335,8 @@
             const productData = {
               nome: name,
               preco: price,
-              unidade: unit
+              unidade: unit,
+              estoque: stock
             };
             set(productRef, productData)
               .then(() => {
@@ -356,16 +371,18 @@
             <th style="padding: 10px; border: 1px solid #ddd;">Nome</th>
             <th style="padding: 10px; border: 1px solid #ddd;">Preço (R$)</th>
             <th style="padding: 10px; border: 1px solid #ddd;">Unidade</th>
+            <th style="padding: 10px; border: 1px solid #ddd;">Estoque</th>
             <th style="padding: 10px; border: 1px solid #ddd;">Ações</th>
           </tr>
         </thead>
         <tbody>
           ${Object.entries(productsDatabase).map(([barcode, product]) => `
-            <tr>
+            <tr class="${(product.estoque || 0) < (product.unidade === 'kilo' ? 0.1 : 1) ? 'low-stock' : ''}">
               <td style="padding: 10px; border: 1px solid #ddd;">${barcode}</td>
               <td style="padding: 10px; border: 1px solid #ddd;">${product.nome}</td>
               <td style="padding: 10px; border: 1px solid #ddd;">${product.preco.toFixed(2).replace('.', ',')}</td>
               <td style="padding: 10px; border: 1px solid #ddd;">${product.unidade === 'kilo' ? 'Kilo' : 'Unidade'}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${(product.estoque || 0).toFixed(3).replace('.', ',')} ${product.unidade === 'kilo' ? 'kg' : 'un'}</td>
               <td style="padding: 10px; border: 1px solid #ddd;">
                 <button onclick="editProduct('${barcode}')">Editar</button>
                 <button onclick="deleteProduct('${barcode}')">Excluir</button>
@@ -385,6 +402,7 @@
           document.getElementById("newProductName").value = product.nome;
           document.getElementById("newProductPrice").value = product.preco;
           document.getElementById("newProductUnit").value = product.unidade || "unidade";
+          document.getElementById("newProductStock").value = product.estoque || 0;
           document.getElementById("newProductBarcode").disabled = true;
           document.getElementById("addProductBtn").textContent = "Atualizar Produto";
         }
@@ -412,6 +430,7 @@
         document.getElementById("newProductName").value = "";
         document.getElementById("newProductPrice").value = "";
         document.getElementById("newProductUnit").value = "unidade";
+        document.getElementById("newProductStock").value = "";
         document.getElementById("newProductBarcode").disabled = false;
         document.getElementById("addProductBtn").textContent = "Salvar Produto";
       }
@@ -433,47 +452,110 @@
       document.getElementById("barcodeInput").addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
           event.preventDefault();
-          const barcode = this.value.trim();
-          if (barcode) {
-            addItemToActiveSale(barcode);
-            this.value = "";
+          const input = this.value.trim();
+          console.log("Entrada recebida:", input); // Log para depuração
+          if (input) {
+            if (input.endsWith('*') && !tempWeight) {
+              // Entrada de gramatura (ex.: "150 *")
+              const weightInput = input.slice(0, -1).trim();
+              const weight = parseFloat(weightInput);
+              console.log("Gramatura digitada:", weightInput, "Convertida (kg):", weight / 1000); // Log
+              if (isNaN(weight) || weight <= 0) {
+                alert("Por favor, insira uma gramatura válida (ex.: 150 *).");
+                return;
+              }
+              tempWeight = weight / 1000; // Converte gramas para kg
+              alert(`Gramatura de ${weight}g registrada. Digite o código do produto.`); // Feedback visual
+              this.value = "";
+              console.log("Campo limpo"); // Log
+              this.placeholder = "Digite o código do produto";
+              console.log("tempWeight definido:", tempWeight); // Log
+              // Timeout para resetar tempWeight após 30 segundos
+              setTimeout(() => {
+                if (tempWeight) {
+                  tempWeight = null;
+                  this.placeholder = "Ex: 150 * para gramatura ou código do produto";
+                  alert("Tempo esgotado. Por favor, insira a gramatura novamente.");
+                  console.log("tempWeight resetado por timeout"); // Log
+                }
+              }, 30000);
+            } else {
+              // Entrada de código de barras
+              console.log("Processando código de barras:", input, "tempWeight atual:", tempWeight); // Log
+              addItemToActiveSale(input);
+              this.value = "";
+              console.log("Campo limpo após código"); // Log
+              this.placeholder = "Ex: 150 * para gramatura ou código do produto";
+            }
+            this.focus(); // Garante foco após cada entrada
           }
         }
       });
 
       function addItemToActiveSale(barcode) {
+        console.log("addItemToActiveSale chamado com barcode:", barcode); // Log
         let product;
         let quantidade = 1;
         let preco;
 
-        if (barcode.startsWith('2') && barcode.length === 13) {
+        if (tempWeight) {
+          // Modo gramatura manual
+          console.log("Modo gramatura manual, tempWeight:", tempWeight); // Log
+          product = productsDatabase[barcode];
+          console.log("Produto encontrado:", product); // Log
+          if (!product) {
+            alert(`Produto com código ${barcode} não encontrado. Por favor, cadastre-o.`);
+            tempWeight = null;
+            document.getElementById("barcodeInput").placeholder = "Ex: 150 * para gramatura ou código do produto";
+            document.getElementById("barcodeInput").focus();
+            return;
+          }
+          if (product.unidade !== 'kilo') {
+            alert(`Produto ${product.nome} não é do tipo 'kilo'. Use código de barras para produtos por unidade.`);
+            tempWeight = null;
+            document.getElementById("barcodeInput").placeholder = "Ex: 150 * para gramatura ou código do produto";
+            document.getElementById("barcodeInput").focus();
+            return;
+          }
+          quantidade = tempWeight;
+          preco = product.preco * quantidade;
+          console.log("Calculado: quantidade =", quantidade, "preco =", preco); // Log
+          tempWeight = null; // Reseta após uso
+        } else if (barcode.startsWith('2') && barcode.length === 13) {
+          // Código de barras com peso embutido
           const productCode = barcode.slice(1, 7);
           const priceCents = parseInt(barcode.slice(7, 12));
           product = productsDatabase[productCode];
+          console.log("Código com peso, productCode:", productCode, "priceCents:", priceCents, "Produto:", product); // Log
           if (product && product.unidade === 'kilo') {
             preco = priceCents / 100;
             quantidade = preco / product.preco;
             if (isNaN(quantidade) || quantidade <= 0) {
               alert("Erro ao calcular o peso do produto. Verifique o preço por kg.");
+              document.getElementById("barcodeInput").focus();
               return;
             }
           } else {
             alert(`Produto com código ${productCode} não encontrado ou não é do tipo 'kilo'.`);
+            document.getElementById("barcodeInput").focus();
             return;
           }
         } else {
+          // Produto por unidade
           product = productsDatabase[barcode];
+          console.log("Produto por unidade, barcode:", barcode, "Produto:", product); // Log
           if (!product) {
             alert(`Produto com código ${barcode} não encontrado. Por favor, cadastre-o.`);
+            document.getElementById("barcodeInput").focus();
             return;
           }
           if (product.unidade === 'kilo') {
-            alert(`Produto ${product.nome} é do tipo 'kilo', mas o código de barras não indica peso. Cadastre com código iniciando em '2' ou insira manualmente.`);
+            alert(`Produto ${product.nome} é do tipo 'kilo'. Use um código iniciando em '2' ou insira a gramatura manualmente (ex.: 150 *).`);
+            document.getElementById("barcodeInput").focus();
             return;
-          } else {
-            preco = product.preco;
-            quantidade = 1;
           }
+          preco = product.preco;
+          quantidade = 1;
         }
 
         activeSaleItems.push({
@@ -484,7 +566,9 @@
           quantidade: quantidade,
           unidade: product.unidade
         });
+        console.log("Item adicionado à venda:", activeSaleItems[activeSaleItems.length - 1]); // Log
         updateActiveSaleDisplay();
+        document.getElementById("barcodeInput").focus(); // Garante foco após adicionar item
       }
 
       window.removeItemFromActiveSale = (itemNumber) => {
@@ -498,6 +582,7 @@
         } else {
           alert("Item não encontrado para remoção.");
         }
+        document.getElementById("barcodeInput").focus();
       };
 
       function updateActiveSaleDisplay() {
@@ -531,7 +616,7 @@
           alert("Adicione itens à venda antes de finalizar.");
           return;
         }
-        updateDataVenda(); // Atualiza o campo dataVenda com o horário atual
+        updateDataVenda();
         const total = activeSaleItems.reduce((sum, item) => sum + item.preco, 0);
         document.getElementById("modalTotalValue").textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         document.getElementById("paymentModal").style.display = "block";
@@ -542,6 +627,9 @@
 
       document.querySelector(".close-button").onclick = () => {
         document.getElementById("paymentModal").style.display = "none";
+        tempWeight = null;
+        document.getElementById("barcodeInput").placeholder = "Ex: 150 * para gramatura ou código do produto";
+        document.getElementById("barcodeInput").focus();
       };
 
       document.getElementById("modalPaymentType").onchange = function() {
@@ -581,6 +669,17 @@
 
         const user = auth.currentUser;
         if (user) {
+          // Atualizar estoque para cada item vendido
+          const updates = {};
+          activeSaleItems.forEach(item => {
+            const productCode = item.codigo.startsWith('2') && item.codigo.length === 13 ? item.codigo.slice(1, 7) : item.codigo;
+            const productRef = `produtos/${user.uid}/${productCode}`;
+            const currentStock = productsDatabase[productCode]?.estoque || 0;
+            const newStock = currentStock - item.quantidade;
+            updates[productRef + '/estoque'] = newStock; // Permite estoque negativo
+          });
+
+          // Salvar a venda e atualizar o estoque
           const saleData = {
             dataVenda: dataVenda,
             valorTotal: total,
@@ -597,13 +696,19 @@
 
           const baseRef = ref(db, `vendas/${user.uid}`);
           const newSaleRef = push(baseRef);
-          set(newSaleRef, saleData).then(() => {
-            alert("Venda registrada com sucesso!");
-            printSaleReceipt(saleData, amountGiven);
-            cancelActiveSale();
-            document.getElementById("paymentModal").style.display = "none";
-            loadAllSalesAndFilter(user.uid);
-          }).catch(err => alert("Erro ao registrar venda: " + err.message));
+          Promise.all([
+            set(newSaleRef, saleData),
+            update(ref(db), updates)
+          ])
+            .then(() => {
+              alert("Venda registrada e estoque atualizado com sucesso!");
+              printSaleReceipt(saleData, amountGiven);
+              cancelActiveSale();
+              document.getElementById("paymentModal").style.display = "none";
+              loadAllSalesAndFilter(user.uid);
+              loadProductsFromDatabase(); // Recarrega produtos para atualizar a interface
+            })
+            .catch(err => alert("Erro ao registrar venda ou atualizar estoque: " + err.message));
         } else {
           alert("Você precisa estar logado para registrar vendas.");
         }
@@ -619,9 +724,11 @@
 
       function cancelActiveSale() {
         activeSaleItems = [];
+        tempWeight = null;
         updateActiveSaleDisplay();
         document.getElementById("barcodeInput").value = "";
-        document.getElementById("paymentModal").style.display = "none";
+        document.getElementById("barcodeInput").placeholder = "Ex: 150 * para gramatura ou código do produto";
+        document.getElementById("barcodeInput").focus();
       }
 
       function printSaleReceipt(sale, amountGiven) {
@@ -688,7 +795,7 @@
       }
 
       document.getElementById("submitSale").onclick = () => {
-        updateDataVenda(); // Atualiza o campo dataVenda com o horário atual
+        updateDataVenda();
         const valorTotal = parseFloat(document.getElementById("valorTotal").value) || 0;
         const tipoPagamento = document.getElementById("tipoPagamento").value;
         const observacoes = document.getElementById("observacoes").value;
@@ -893,7 +1000,7 @@
         document.getElementById("valorTotal").value = "";
         document.getElementById("tipoPagamento").value = "Pix";
         document.getElementById("observacoes").value = "";
-        updateDataVenda(); // Atualiza o campo dataVenda ao limpar o formulário
+        updateDataVenda();
       }
 
       document.getElementById("exportPdfBtn").onclick = () => {
@@ -1298,6 +1405,10 @@
 
       #productList tr:nth-child(even) {
         background-color: #f9f9f9;
+      }
+
+      #productList tr.low-stock {
+        background-color: #ffe6e6;
       }
 
       #productList button {
